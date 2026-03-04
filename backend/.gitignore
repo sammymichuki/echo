@@ -1,0 +1,20 @@
+venv/
+.venv/
+uploads/
+
+# Local environment files
+.env
+.env.local
+
+# Python bytecode/cache
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Test and tooling caches
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+coverage.xml
+htmlcov/
