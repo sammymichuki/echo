@@ -31,12 +31,12 @@ export default function ThreadScreen({ post, anonId, onBack, onOpenProfile, onTo
 
   useEffect(() => {
     if (!post) return;
-    fetchReplies(post.id)
+    fetchReplies(post.id, anonId)
       .then(({ replies: r }) =>
         setReplies(r.map(mapReply).reverse())
       )
       .catch(() => setReplies([]));
-  }, [post?.id]);
+  }, [anonId, post?.id]);
 
   function handleNewReply(data) {
     setReplies((prev) => [
@@ -60,7 +60,7 @@ export default function ThreadScreen({ post, anonId, onBack, onOpenProfile, onTo
 
         {/* Parent post */}
         <div className="thread-parent">
-          <VoiceCard post={post} anonId={anonId} compact onOpenProfile={onOpenProfile} onToast={onToast} />
+          <VoiceCard post={post} anonId={anonId} onOpenProfile={onOpenProfile} onToast={onToast} />
         </div>
 
         {/* Replies */}

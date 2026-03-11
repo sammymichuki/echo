@@ -10,7 +10,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
 from backend.database import engine, Base
-from backend.routes import posts, replies, reactions, users
+from backend.routes import auth, posts, reactions, replies, reposts, saves, shares, users, views
 
 # ── App ────────────────────────────────────────────────────────────────────
 app = FastAPI(
@@ -33,10 +33,15 @@ app.add_middleware(
 )
 
 # ── Routes ─────────────────────────────────────────────────────────────────
+app.include_router(auth.router)
 app.include_router(posts.router)
 app.include_router(replies.router)
 app.include_router(reactions.router)
+app.include_router(reposts.router)
+app.include_router(saves.router)
+app.include_router(shares.router)
 app.include_router(users.router)
+app.include_router(views.router)
 
 # ── Static file serving for local audio uploads ────────────────────────────
 app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")

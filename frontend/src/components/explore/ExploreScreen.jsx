@@ -51,10 +51,15 @@ export default function ExploreScreen({
     setLoading(true);
     setError("");
 
-    fetchFeed(40, 0, {
-      mood: moodFilter === "All" ? undefined : moodFilter,
-      window: timeFilter,
-    })
+    fetchFeed(
+      40,
+      0,
+      {
+        mood: moodFilter === "All" ? undefined : moodFilter,
+        window: timeFilter,
+      },
+      anonId
+    )
       .then(({ posts: apiPosts }) => {
         setPosts(
           apiPosts.map((p) => ({
@@ -69,7 +74,7 @@ export default function ExploreScreen({
         setError(err?.message || "Failed to load explore posts");
       })
       .finally(() => setLoading(false));
-  }, [moodFilter, timeFilter]);
+  }, [anonId, moodFilter, timeFilter]);
 
   const timeLabel = TIME_FILTERS.find((t) => t.value === timeFilter)?.label ?? "Last hour";
 

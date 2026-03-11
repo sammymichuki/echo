@@ -11,5 +11,5 @@ export async function addReaction({ postId, emoji, anonId }) {
     body: JSON.stringify({ emoji, anon_id: anonId }),
   });
   if (!res.ok) throw new Error("Failed to add reaction");
-  return res.json(); // { reacted: boolean }
+  return res.json();
 }

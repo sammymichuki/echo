@@ -15,21 +15,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from backend.database import get_db
 from backend.models.models import User, VoicePost, VoiceReply
 from backend.schemas.schemas import RepliesResponse, VoiceReplyOut
+from backend.services.auth import require_existing_user
 from backend.services.moderation import moderate_audio
 from backend.services.storage import upload_audio
 
 router = APIRouter(prefix="/posts", tags=["replies"])
-
-
-async def _get_or_create_user(db: AsyncSession, anon_id: str) -> User:
-    result = await db.execute(select(User).where(User.id == anon_id))
-    user = result.scalar_one_or_none()
-    if not user:
-        user = User(id=anon_id)
-        db.add(user)
-        await db.flush()
-    return user
-
 
 @router.get("/{post_id}/replies", response_model=RepliesResponse)
 async def get_replies(post_id: str, db: AsyncSession = Depends(get_db)):
@@ -67,7 +57,7 @@ async def create_reply(
     if not post or post.expires_at < datetime.utcnow():
         raise HTTPException(status_code=404, detail="Post not found or expired")
 
-    user = await _get_or_create_user(db, anon_id)
+    user = await require_existing_user(db, anon_id)
     if user.shadow_ban:
         raise HTTPException(status_code=403, detail="Account restricted")
 

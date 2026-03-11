@@ -1,5 +1,5 @@
 export const REACTIONS = [
-    { emoji: "🤍", label: "I hear you"     },
-    { emoji: "🫂", label: "Same here"      },
-    { emoji: "💭", label: "Thinking of you"},
+    { emoji: "🤍", label: "clock it"     },
+    { emoji: "🫂", label: "love it"      },
+    { emoji: "💭", label: "wdm?"},
   ];

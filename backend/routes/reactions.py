@@ -11,6 +11,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from backend.database import get_db
 from backend.models.models import Reaction, VoicePost
 from backend.schemas.schemas import ReactionIn, ReactionOut
+from backend.services.auth import require_existing_user
+from backend.services.post_metrics import get_post_metrics
 
 router = APIRouter(prefix="/posts", tags=["reactions"])
 
@@ -25,6 +27,8 @@ async def toggle_reaction(
 ):
     if body.emoji not in VALID_EMOJIS:
         raise HTTPException(status_code=422, detail="Invalid reaction emoji")
+
+    await require_existing_user(db, body.anon_id)
 
     # Verify post exists
     post_result = await db.execute(select(VoicePost).where(VoicePost.id == post_id))
@@ -44,11 +48,22 @@ async def toggle_reaction(
         # Toggle off if same emoji, else swap
         if reaction.emoji == body.emoji:
             await db.delete(reaction)
-            return {"reacted": False, "emoji": body.emoji}
+            reacted = False
         else:
             reaction.emoji = body.emoji
-            return {"reacted": True, "emoji": body.emoji}
+            reacted = True
     else:
         new_r = Reaction(post_id=post_id, user_id=body.anon_id, emoji=body.emoji)
         db.add(new_r)
-        return {"reacted": True, "emoji": body.emoji}
+        reacted = True
+
+    await db.flush()
+    metrics = await get_post_metrics(db, [post_id], viewer_id=body.anon_id)
+    post_metrics = metrics.get(post_id, {})
+    return {
+        "reacted": reacted,
+        "emoji": body.emoji,
+        "reaction_count": post_metrics.get("reaction_count", 0),
+        "reaction_counts": post_metrics.get("reaction_counts", {}),
+        "viewer_reaction": post_metrics.get("viewer_reaction"),
+    }

@@ -4,8 +4,11 @@ const BASE = import.meta.env.VITE_API_URL || "http://localhost:8000";
  * Fetch all replies for a post.
  * GET /posts/:postId/replies
  */
-export async function fetchReplies(postId) {
-  const res = await fetch(`${BASE}/posts/${postId}/replies`);
+export async function fetchReplies(postId, anonId = null) {
+  const params = new URLSearchParams();
+  if (anonId) params.set("viewer_id", anonId);
+  const suffix = params.toString() ? `?${params.toString()}` : "";
+  const res = await fetch(`${BASE}/posts/${postId}/replies${suffix}`);
   if (!res.ok) throw new Error("Failed to fetch replies");
   return res.json(); // { replies: VoiceReply[] }
 }

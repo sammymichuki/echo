@@ -18,8 +18,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from backend.database import get_db
 from backend.models.models import Reaction, Report, User, VoicePost, VoiceReply
 from backend.schemas.schemas import FeedResponse, ReportIn, ReportOut, VoicePostOut
-from backend.services.storage import upload_audio
+from backend.services.auth import require_existing_user
 from backend.services.moderation import moderate_audio
+from backend.services.post_metrics import get_post_metrics, serialize_post
+from backend.services.storage import upload_audio
 
 router = APIRouter(prefix="/posts", tags=["posts"])
 
@@ -27,25 +29,6 @@ SHADOW_BAN_THRESHOLD = 3  # reports before shadow ban
 
 
 # ── Helpers ────────────────────────────────────────────────────────────────
-async def _get_or_create_user(db: AsyncSession, anon_id: str) -> User:
-    result = await db.execute(select(User).where(User.id == anon_id))
-    user = result.scalar_one_or_none()
-    if not user:
-        user = User(id=anon_id)
-        db.add(user)
-        await db.flush()
-    return user
-
-
-async def _enrich_post(db: AsyncSession, post: VoicePost) -> dict:
-    """Attach reply_count to a post dict."""
-    reply_count_result = await db.execute(
-        select(func.count()).where(VoiceReply.post_id == post.id)
-    )
-    reply_count = reply_count_result.scalar() or 0
-    return {**post.__dict__, "reply_count": reply_count}
-
-
 # ── Routes ─────────────────────────────────────────────────────────────────
 @router.get("", response_model=FeedResponse)
 async def get_feed(
@@ -53,6 +36,7 @@ async def get_feed(
     offset: int = 0,
     mood:   Optional[str] = None,
     window: Optional[str] = None,  # "last_hour" | "today"
+    viewer_id: Optional[str] = None,
     db:     AsyncSession = Depends(get_db),
 ):
     """Return live, non-flagged voice posts ordered by newest first."""
@@ -84,17 +68,23 @@ async def get_feed(
     )
     total = total_result.scalar() or 0
 
-    enriched = [await _enrich_post(db, p) for p in posts]
+    metrics = await get_post_metrics(db, [post.id for post in posts], viewer_id=viewer_id, now=now)
+    enriched = [serialize_post(post, metrics) for post in posts]
     return {"posts": enriched, "total": total}
 
 
 @router.get("/{post_id}", response_model=VoicePostOut)
-async def get_post(post_id: str, db: AsyncSession = Depends(get_db)):
+async def get_post(
+    post_id: str,
+    viewer_id: Optional[str] = None,
+    db: AsyncSession = Depends(get_db),
+):
     result = await db.execute(select(VoicePost).where(VoicePost.id == post_id))
     post = result.scalar_one_or_none()
     if not post:
         raise HTTPException(status_code=404, detail="Post not found")
-    return await _enrich_post(db, post)
+    metrics = await get_post_metrics(db, [post.id], viewer_id=viewer_id)
+    return serialize_post(post, metrics)
 
 
 @router.post("", response_model=VoicePostOut, status_code=status.HTTP_201_CREATED)
@@ -105,7 +95,7 @@ async def create_post(
     anon_id:  str        = Form(...),
     db:       AsyncSession = Depends(get_db),
 ):
-    user = await _get_or_create_user(db, anon_id)
+    user = await require_existing_user(db, anon_id)
 
     if user.shadow_ban:
         raise HTTPException(status_code=403, detail="Account restricted")
@@ -129,7 +119,8 @@ async def create_post(
     )
     db.add(post)
     await db.flush()
-    return await _enrich_post(db, post)
+    metrics = await get_post_metrics(db, [post.id], viewer_id=anon_id)
+    return serialize_post(post, metrics)
 
 
 @router.post("/{post_id}/report", response_model=ReportOut)
@@ -143,6 +134,8 @@ async def report_post(
     post = result.scalar_one_or_none()
     if not post:
         raise HTTPException(status_code=404, detail="Post not found")
+
+    await require_existing_user(db, anon_id)
 
     report = Report(post_id=post_id, reporter_id=anon_id, reason=body.reason)
     db.add(report)

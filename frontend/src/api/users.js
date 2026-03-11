@@ -4,8 +4,11 @@ const BASE = import.meta.env.VITE_API_URL || "http://localhost:8000";
  * Fetch one anonymous account with all their posts and replies to those posts.
  * GET /users/:anonId/posts
  */
-export async function fetchUserPosts(anonId) {
-  const res = await fetch(`${BASE}/users/${encodeURIComponent(anonId)}/posts`);
+export async function fetchUserPosts(anonId, viewerId = null) {
+  const params = new URLSearchParams();
+  if (viewerId) params.set("viewer_id", viewerId);
+  const suffix = params.toString() ? `?${params.toString()}` : "";
+  const res = await fetch(`${BASE}/users/${encodeURIComponent(anonId)}/posts${suffix}`);
   if (!res.ok) {
     let detail = "Failed to fetch user posts";
     try {

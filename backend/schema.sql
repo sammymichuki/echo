@@ -18,6 +18,25 @@ CREATE TABLE IF NOT EXISTS users (
   created_at   DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
+CREATE TABLE IF NOT EXISTS anonymous_credentials (
+  user_id             VARCHAR(36) PRIMARY KEY,
+  recovery_code_hash  VARCHAR(64) NOT NULL UNIQUE,
+  created_at          DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+  CONSTRAINT fk_ac_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS anonymous_sessions (
+  id              INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  user_id         VARCHAR(36) NOT NULL,
+  token_hash      VARCHAR(64) NOT NULL UNIQUE,
+  created_at      DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  last_used_at    DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+  INDEX idx_as_user (user_id),
+  CONSTRAINT fk_as_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
 -- ── Voice posts ────────────────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS voice_posts (
   id           VARCHAR(36)  PRIMARY KEY,
@@ -72,6 +91,57 @@ CREATE TABLE IF NOT EXISTS reactions (
   INDEX idx_r_post         (post_id),
   CONSTRAINT fk_r_post     FOREIGN KEY (post_id)  REFERENCES voice_posts(id) ON DELETE CASCADE,
   CONSTRAINT fk_r_user     FOREIGN KEY (user_id)  REFERENCES users(id)
+);
+
+-- ── Reposts (one per user per post) ───────────────────────────────────────
+CREATE TABLE IF NOT EXISTS reposts (
+  id           INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  post_id      VARCHAR(36)  NOT NULL,
+  user_id      VARCHAR(36)  NOT NULL,
+  created_at   DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+  UNIQUE KEY uq_repost     (post_id, user_id),
+  INDEX idx_repost_post    (post_id),
+  CONSTRAINT fk_repost_post FOREIGN KEY (post_id) REFERENCES voice_posts(id) ON DELETE CASCADE,
+  CONSTRAINT fk_repost_user FOREIGN KEY (user_id) REFERENCES users(id)
+);
+
+-- ── Views (one per user per post) ─────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS post_views (
+  id           INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  post_id      VARCHAR(36)  NOT NULL,
+  user_id      VARCHAR(36)  NOT NULL,
+  created_at   DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+  UNIQUE KEY uq_post_view  (post_id, user_id),
+  INDEX idx_view_post      (post_id),
+  CONSTRAINT fk_view_post  FOREIGN KEY (post_id) REFERENCES voice_posts(id) ON DELETE CASCADE,
+  CONSTRAINT fk_view_user  FOREIGN KEY (user_id) REFERENCES users(id)
+);
+
+-- ── Shares (count every successful share action) ──────────────────────────
+CREATE TABLE IF NOT EXISTS post_shares (
+  id           INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  post_id      VARCHAR(36)  NOT NULL,
+  user_id      VARCHAR(36)  NOT NULL,
+  created_at   DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+  INDEX idx_share_post     (post_id),
+  CONSTRAINT fk_share_post FOREIGN KEY (post_id) REFERENCES voice_posts(id) ON DELETE CASCADE,
+  CONSTRAINT fk_share_user FOREIGN KEY (user_id) REFERENCES users(id)
+);
+
+-- ── Saved posts (one per user per post) ───────────────────────────────────
+CREATE TABLE IF NOT EXISTS saved_posts (
+  id           INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  post_id      VARCHAR(36)  NOT NULL,
+  user_id      VARCHAR(36)  NOT NULL,
+  created_at   DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+  UNIQUE KEY uq_saved_post (post_id, user_id),
+  INDEX idx_saved_post     (post_id),
+  CONSTRAINT fk_saved_post FOREIGN KEY (post_id) REFERENCES voice_posts(id) ON DELETE CASCADE,
+  CONSTRAINT fk_saved_user FOREIGN KEY (user_id) REFERENCES users(id)
 );
 
 -- ── Reports ────────────────────────────────────────────────────────────────

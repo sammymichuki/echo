@@ -7,13 +7,37 @@
  *   progress – number    playback progress in [0,1]
  *   playing  – boolean   whether audio is currently playing
  */
-export default function Waveform({ bars = [], progress = 0, playing = false }) {
+export default function Waveform({ bars = [], progress = 0, playing = false, onSeek = null }) {
+  const safeProgress = Math.max(0, Math.min(progress, 1));
+  const activeIndex = bars.length ? Math.min(Math.floor(safeProgress * bars.length), bars.length - 1) : -1;
+
+  function handlePointerSeek(e) {
+    if (!onSeek || !bars.length) return;
+    e.stopPropagation();
+    const rect = e.currentTarget.getBoundingClientRect();
+    const nextProgress = (e.clientX - rect.left) / rect.width;
+    onSeek(nextProgress);
+  }
+
   return (
-    <div className="waveform">
+    <div
+      className={`waveform${onSeek ? " seekable" : ""}`}
+      onClick={(e) => onSeek && e.stopPropagation()}
+      onPointerDown={handlePointerSeek}
+      onPointerMove={(e) => {
+        if (e.buttons !== 1) return;
+        handlePointerSeek(e);
+      }}
+      role={onSeek ? "slider" : undefined}
+      aria-valuemin={onSeek ? 0 : undefined}
+      aria-valuemax={onSeek ? 100 : undefined}
+      aria-valuenow={onSeek ? Math.round(safeProgress * 100) : undefined}
+      aria-label={onSeek ? "Seek playback position" : undefined}
+    >
       {bars.map((h, i) => {
-        const frac    = i / bars.length;
-        const isPlayed = frac < progress;
-        const isActive = playing && Math.abs(frac - progress) < 0.05;
+        const frac = (i + 1) / bars.length;
+        const isPlayed = frac <= safeProgress;
+        const isActive = playing && i === activeIndex;
         return (
           <div
             key={i}
@@ -22,6 +46,7 @@ export default function Waveform({ bars = [], progress = 0, playing = false }) {
           />
         );
       })}
+      <div className="wave-progress-line" style={{ width: `${safeProgress * 100}%` }} />
     </div>
   );
 }

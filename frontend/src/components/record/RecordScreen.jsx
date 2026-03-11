@@ -4,7 +4,8 @@ import { createPost } from "../../api/posts";
 import { createReply } from "../../api/replies";
 import { MOODS } from "../../constants/moods";
 import { fmtSeconds } from "../../utils/time";
-import { generateWave } from "../../utils/waveform";
+import { generateWave, loadWaveFromBlob } from "../../utils/waveform";
+import { claimAudioSession, releaseAudioSession } from "../../utils/audioSession";
 
 /**
  * RecordScreen
@@ -41,7 +42,21 @@ export default function RecordScreen({
     if (!blob) return;
     const url = URL.createObjectURL(blob);
     const audio = new Audio(url);
-    audio.play();
+    const sessionId = `preview_${Date.now()}`;
+    claimAudioSession(sessionId, () => {
+      audio.pause();
+      audio.currentTime = 0;
+      URL.revokeObjectURL(url);
+      releaseAudioSession(sessionId);
+    });
+    audio.addEventListener("ended", () => {
+      URL.revokeObjectURL(url);
+      releaseAudioSession(sessionId);
+    }, { once: true });
+    audio.play().catch(() => {
+      URL.revokeObjectURL(url);
+      releaseAudioSession(sessionId);
+    });
   }
 
   async function handlePost() {
@@ -57,6 +72,12 @@ export default function RecordScreen({
     const mood = selectedMood || "Lonely";
     try {
       let created;
+      let wave = generateWave();
+      try {
+        wave = await loadWaveFromBlob(blob);
+      } catch {
+        wave = generateWave();
+      }
       const safeDuration = Math.max(elapsed, 1);
       if (isReply) {
         created = await createReply({
@@ -74,7 +95,7 @@ export default function RecordScreen({
           anonId,
         });
       }
-      onPost({ ...created, wave: generateWave(), timeAgo: "just now" });
+      onPost({ ...created, wave, timeAgo: "just now" });
     } catch (err) {
       setApiError(err?.message || "Failed to post voice.");
     } finally {

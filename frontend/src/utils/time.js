@@ -14,6 +14,16 @@ export function timeAgo(isoString) {
   }
   
   /** Formats seconds as MM:SS */
-  export function fmtSeconds(s) {
+export function fmtSeconds(s) {
     return `${String(Math.floor(s / 60)).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}`;
   }
+
+export function timeUntil(isoString) {
+  const diff = new Date(isoString).getTime() - Date.now();
+  if (isNaN(diff) || diff <= 0) return "expired";
+  const mins = Math.floor(diff / 60000);
+  if (mins < 60) return `${Math.max(mins, 1)}m left`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `${hrs}h left`;
+  return `${Math.floor(hrs / 24)}d left`;
+}

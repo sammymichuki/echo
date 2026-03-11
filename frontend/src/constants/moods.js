@@ -1,4 +1,7 @@
 export const MOODS = [
+  { label: "any",   color: "#7cb8e8", bg: "rgba(124,184,232,0.1)", emoji: "🌑" },
+  { label: "x",   color: "#7cb8e8", bg: "rgba(124,184,232,0.1)", emoji: "🌑" },
+  { label: "Unpopular opinion",   color: "#7cb8e8", bg: "rgba(124,184,232,0.1)", emoji: "🌑" },
     { label: "Lonely",   color: "#7cb8e8", bg: "rgba(124,184,232,0.1)", emoji: "🌑" },
     { label: "Hopeful",  color: "#7ce8a8", bg: "rgba(124,232,168,0.1)", emoji: "🌱" },
     { label: "Angry",    color: "#e87c7c", bg: "rgba(232,124,124,0.1)", emoji: "🔥" },

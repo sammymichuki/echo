@@ -48,7 +48,7 @@ export default function ProfileScreen({
 
     setLoading(true);
     setError("");
-    fetchUserPosts(profileAnonId)
+    fetchUserPosts(profileAnonId, anonId)
       .then(({ posts: apiPosts, wrote_replies: apiWroteReplies }) => {
         setPosts(apiPosts.map(decoratePost));
         setWroteReplies((apiWroteReplies || []).map(decorateWrittenReply));
@@ -59,7 +59,7 @@ export default function ProfileScreen({
         setError(err?.message || "Failed to load account");
       })
       .finally(() => setLoading(false));
-  }, [visible, profileAnonId]);
+  }, [anonId, visible, profileAnonId]);
 
   const totalReplies = useMemo(
     () => posts.reduce((sum, post) => sum + (post.replies?.length ?? post.reply_count ?? 0), 0),

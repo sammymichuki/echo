@@ -29,3 +29,49 @@ export function generateWave(seed = Math.random(), bars = 40) {
       return Math.min(sum / chunk / 0.5, 1); // normalise
     });
   }
+
+const waveCache = new Map();
+
+async function decodeToWave(arrayBuffer, bars = 40) {
+  const AudioCtx = window.AudioContext || window.webkitAudioContext;
+  if (!AudioCtx) throw new Error("AudioContext unsupported");
+  const ctx = new AudioCtx();
+  try {
+    const audioBuffer = await ctx.decodeAudioData(arrayBuffer.slice(0));
+    const channel = audioBuffer.getChannelData(0);
+    return bufferToWave(channel, bars);
+  } finally {
+    await ctx.close();
+  }
+}
+
+export async function loadWaveFromBlob(blob, bars = 40) {
+  const key = `blob:${blob.size}:${blob.type}:${bars}`;
+  if (waveCache.has(key)) return waveCache.get(key);
+  const promise = blob.arrayBuffer().then((buffer) => decodeToWave(buffer, bars));
+  waveCache.set(key, promise);
+  try {
+    return await promise;
+  } catch (err) {
+    waveCache.delete(key);
+    throw err;
+  }
+}
+
+export async function loadWaveFromUrl(url, bars = 40) {
+  const key = `url:${url}:${bars}`;
+  if (waveCache.has(key)) return waveCache.get(key);
+  const promise = fetch(url)
+    .then((res) => {
+      if (!res.ok) throw new Error("Failed to fetch audio");
+      return res.arrayBuffer();
+    })
+    .then((buffer) => decodeToWave(buffer, bars));
+  waveCache.set(key, promise);
+  try {
+    return await promise;
+  } catch (err) {
+    waveCache.delete(key);
+    throw err;
+  }
+}

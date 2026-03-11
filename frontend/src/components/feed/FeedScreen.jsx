@@ -69,12 +69,12 @@ export default function FeedScreen({
 
   // Load real posts from API
   useEffect(() => {
-    fetchFeed(30, 0)
+    fetchFeed(30, 0, {}, anonId)
       .then(({ posts: apiPosts }) => {
         setPosts(apiPosts.map(enrichPost));
       })
       .catch(() => setPosts([]));
-  }, []);
+  }, [anonId]);
 
   useEffect(() => {
     postsRef.current = posts;
@@ -108,7 +108,7 @@ export default function FeedScreen({
 
     const id = setInterval(async () => {
       try {
-        const { posts: latestPosts } = await fetchFeed(12, 0);
+        const { posts: latestPosts } = await fetchFeed(12, 0, {}, anonId);
         const latest = latestPosts.map(enrichPost);
         const existingIds = new Set(postsRef.current.map((p) => p.id));
         const fresh = latest.filter((p) => !existingIds.has(p.id));
@@ -125,7 +125,7 @@ export default function FeedScreen({
     }, POLL_MS);
 
     return () => clearInterval(id);
-  }, [visible, onToast]);
+  }, [anonId, visible, onToast]);
 
   // Prepend new post optimistically
   useEffect(() => {

@@ -12,12 +12,17 @@ from datetime import datetime
 from backend.database import get_db
 from backend.models.models import User, VoicePost, VoiceReply
 from backend.schemas.schemas import UserPostsResponse
+from backend.services.post_metrics import get_post_metrics, serialize_post
 
 router = APIRouter(prefix="/users", tags=["users"])
 
 
 @router.get("/{anon_id}/posts", response_model=UserPostsResponse)
-async def get_user_posts(anon_id: str, db: AsyncSession = Depends(get_db)):
+async def get_user_posts(
+    anon_id: str,
+    viewer_id: str | None = None,
+    db: AsyncSession = Depends(get_db),
+):
     now = datetime.utcnow()
 
     user_result = await db.execute(select(User).where(User.id == anon_id))
@@ -82,13 +87,11 @@ async def get_user_posts(anon_id: str, db: AsyncSession = Depends(get_db)):
         if reply.post_id in parent_posts_by_id
     ]
 
-    enriched_posts = [
-        {
-            **post.__dict__,
-            "reply_count": len(replies_by_post_id.get(post.id, [])),
-            "replies": replies_by_post_id.get(post.id, []),
-        }
-        for post in posts
-    ]
+    metrics = await get_post_metrics(db, post_ids, viewer_id=viewer_id, now=now)
+    enriched_posts = []
+    for post in posts:
+        enriched = serialize_post(post, metrics)
+        enriched["replies"] = replies_by_post_id.get(post.id, [])
+        enriched_posts.append(enriched)
 
     return {"anon_id": anon_id, "posts": enriched_posts, "wrote_replies": wrote_replies_payload}
