@@ -139,7 +139,7 @@ echo/
     ├── schema.sql                     MySQL DDL — run once to init DB
     ├── requirements.txt
     ├── .env.example
-    ├── .env                           Your local config (never commit)
+    ├── .env                           Your local config 
     ├── models/
     │   └── models.py                  ORM: User, VoicePost, VoiceReply,
     │                                       Reaction, Report
@@ -385,4 +385,4 @@ frontend/.env
 
 ---
 
-*Echo — No names. No profiles. Just voices.*
+*Echo — No names. Just voices.*
